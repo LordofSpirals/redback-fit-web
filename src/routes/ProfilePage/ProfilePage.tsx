@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import styles from './ProfilePage.module.css';
 
 const ProfilePage: React.FC = () => {
@@ -9,6 +9,31 @@ const ProfilePage: React.FC = () => {
 		gender: 'Male',
 	});
 	const [avatar, setAvatar] = useState('src/assets/ProfilePic.png'); // Default avatar path
+	const [avatarFile, setAvatarFile] = useState<File | null>(null); // For backend
+
+	// Fetch profile from backend
+	useEffect(() => {
+		const fetchProfile = async () => {
+			try {
+				const response = await fetch('http://localhost:5000/api/profile');
+				const data = await response.json();
+
+				if (data) {
+					setUserData({
+						name: data.name,
+						account: data.account,
+						birthDate: data.birthDate,
+						gender: data.gender,
+					});
+					setAvatar(data.avatar || 'src/assets/ProfilePic.png');
+				}
+			} catch (error) {
+				console.error('Error fetching profile data:', error);
+			}
+		};
+
+		fetchProfile();
+	}, []);
 
 	const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 		const { name, value } = e.target;
@@ -24,11 +49,57 @@ const ProfilePage: React.FC = () => {
 			const file = e.target.files[0];
 			const newAvatarUrl = URL.createObjectURL(file);
 			setAvatar(newAvatarUrl);
+			setAvatarFile(file);
 		}
 	};
 
-	const handleSave = () => {
-		alert('User profile saved!');
+	const handleSave = async () => {
+		try {
+			let avatarBase64 = avatar;
+
+			if (avatarFile) {
+				const reader = new FileReader();
+				reader.onloadend = async () => {
+					avatarBase64 = reader.result?.toString() || avatar;
+
+					const response = await fetch('http://localhost:5000/api/profile', {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({
+							...userData,
+							avatar: avatarBase64,
+						}),
+					});
+
+					if (response.ok) {
+						alert('User profile saved!');
+					} else {
+						console.error('Failed to save profile');
+						alert('Error saving profile');
+					}
+				};
+				reader.readAsDataURL(avatarFile);
+			} else {
+				const response = await fetch('http://localhost:5000/api/profile', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						...userData,
+						avatar: avatarBase64,
+					}),
+				});
+
+				if (response.ok) {
+					alert('User profile saved!');
+				} else {
+					console.error('Failed to save profile');
+					alert('Error saving profile');
+				}
+			}
+		} catch (error) {
+			console.error('Error saving profile:', error);
+			alert('Error saving profile');
+		}
 	};
 
 	const handleBack = () => {
@@ -106,4 +177,3 @@ const ProfilePage: React.FC = () => {
 };
 
 export default ProfilePage;
-

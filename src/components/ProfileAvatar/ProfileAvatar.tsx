@@ -1,20 +1,29 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './ProfileAvatar.css';
 import ProfilePic from '../../assets/ProfilePic.png';
 
 const ProfileAvatar: React.FC = () => {
-
 	const [isPopupVisible, setIsPopupVisible] = useState(false);
 	const [isLoggedIn, setIsLoggedIn] = useState(true); // Login state
+	const [avatar, setAvatar] = useState<string>(ProfilePic); // B/E avatar state
 	const navigate = useNavigate();
 	const hideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-	// Simulate login check (replace with real API)
-	// useEffect(() => {
-	// 	const token = localStorage.getItem('authToken'); // Check token in localStorage
-	// 	setIsLoggedIn(!!token); // Set login state based on token existence
-	// }, []);
+	// B/E Fetch user profile (including avatar) from API
+	useEffect(() => {
+		fetch('http://localhost:5000/api/profile')
+			.then(res => res.json())
+			.then(data => {
+				if (data.avatar) {
+					setAvatar(data.avatar); // Set the avatar from API response
+				}
+			})
+			.catch(err => {
+				console.error('Error fetching profile:', err);
+			});
+	}, []);
+	////////////////////////////////////////////////////////////////////////////////
 
 	const handleMouseEnter = () => {
 		if (hideTimeoutRef.current) {
@@ -32,9 +41,9 @@ const ProfileAvatar: React.FC = () => {
 	const handleLogout = () => {
 		localStorage.removeItem('authToken'); // Clear token
 		setIsLoggedIn(false); // Update state
-
 	};
-	const handleChangeAccount=()=>{
+
+	const handleChangeAccount = () => {
 		handleLogout();
 		navigate('/login');
 	};
@@ -46,7 +55,7 @@ const ProfileAvatar: React.FC = () => {
 			onMouseLeave={handleMouseLeave}
 		>
 			{/* User avatar */}
-			<img src={ProfilePic} alt="User Avatar" className="profile-avatar" />
+			<img src={avatar} alt="User Avatar" className="profile-avatar" /> {/* B/E: use fetched avatar */}
 
 			{/* Popup menu */}
 			{isPopupVisible && (
@@ -76,7 +85,6 @@ const ProfileAvatar: React.FC = () => {
 							<button className="profile-button" onClick={handleLogout}>
 								Logout
 							</button>
-							
 						</>
 					) : (
 						<>
@@ -85,7 +93,7 @@ const ProfileAvatar: React.FC = () => {
 								className="profile-button"
 								onClick={() => navigate('/login')}
 							>
-							Login
+								Login
 							</button>
 						</>
 					)}

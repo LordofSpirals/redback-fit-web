@@ -1,5 +1,7 @@
 /* eslint-disable @typescript-eslint/no-empty-function */
 import * as React from 'react';
+import { useEffect, useState } from 'react'; //B/E
+
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { DateCalendar } from '@mui/x-date-pickers/DateCalendar';
@@ -32,15 +34,70 @@ const heartRateData = [
 	{ time: 6, heartRate: 85 },
 ];
 
+// Assuming you calculate unreadCount from notificationsData or elsewhere
+const unreadCount = notificationsData.filter(n => !n.read).length;
+
+//B/E fetch user data from the dashboard endpoint.
 const DashboardLanding: React.FC = () => {
-	const unreadCount = notificationsData.filter(n => n.status === 'unread').length;
+	const [userData, setUserData] = useState<any>(null);
+	const [isLoading, setIsLoading] = useState(true);
+
+
+	
+	const [vo2Max, setVo2Max] = useState<number | null>(null);
+
+	// Fetch user data on component mount
+	useEffect(() => {
+		const fetchUserData = async () => {
+			try {
+				const response = await fetch('http://localhost:5000/api/dashboard');
+				const text = await response.text();
+				console.log(text);  // Check the response content
+
+				if (response.ok) {
+					const data = JSON.parse(text);  // Only parse if it's valid JSON
+					setUserData(data);  // Set the data in state
+				} else {
+					console.error('Failed to fetch user data');
+				}
+			} catch (error) {
+				console.error('Error fetching user data', error);
+			} finally {
+				setIsLoading(false);  // Set loading state to false once done
+			}
+		};
+
+		fetchUserData();
+	}, []);
+
+	// Effect to fetch VO2 max from body_insight API
+	useEffect(() => {
+		const fetchVO2Max = async () => {
+			try {
+				// Gets latest VO2 max value from body_insight based on latest activity recorded.
+				const response = await fetch('http://localhost:5000/api/body_insight/latest');
+
+				if (response.ok) {
+					const data = await response.json();
+					setVo2Max(data.vo2_max ?? 0);
+				} else {
+					console.error('Failed to fetch VO2 max');
+				}
+			} catch (error) {
+				console.error('Error fetching VO2 max:', error);
+			}
+		};
+		fetchVO2Max();
+	}, []);
 
 	return (
 		<main className={styles.mainContainerLanding}>
 			{/* Header Bar */}
 			<div className={styles.topBar}>
 				<div>
-					<h1 className={styles.dashboardTitle}>Welcome, Austin!</h1>
+					<h1 className={styles.dashboardTitle}>
+						Welcome {userData ? userData.name : 'Loading...'}!
+					</h1>
 					<LastSynced />
 					<DailyQuote />
 				</div>
@@ -53,17 +110,14 @@ const DashboardLanding: React.FC = () => {
 
 					<Link to="/notifications" className={styles.link}>
 						<IconButton>
-							<Badge
-								badgeContent={unreadCount}
-								color="error"
-								invisible={unreadCount === 0}
-							>
+							<Badge badgeContent={unreadCount} color="error" invisible={unreadCount === 0}>
 								<NotificationsRounded sx={{ fontSize: 36 }} />
 							</Badge>
 						</IconButton>
 					</Link>
 
-					<ProfileAvatar />
+					{/* Show avatar from backend */}
+					<ProfileAvatar avatarUrl={userData?.avatar} />
 				</div>
 			</div>
 
@@ -95,8 +149,7 @@ const DashboardLanding: React.FC = () => {
 				<div className={styles.sideBySideComponents}>
 					<div className={styles.SessionsProfileWindow}>
 						<h1>Your Sessions</h1>
-						// eslint-disable-next-line @typescript-eslint/no-empty-function, @typescript-eslint/no-empty-function, @typescript-eslint/no-empty-function, @typescript-eslint/no-empty-function
-						<SessionTable onRowClick={() => {}} />
+						<SessionTable onRowClick={() => { }} />
 					</div>
 
 					<div className={styles.calV02Box}>
@@ -109,7 +162,7 @@ const DashboardLanding: React.FC = () => {
 						<div className={styles.VO2Window}>
 							<h3 className={styles.componentTextVO2}>VO2 Max</h3>
 							<Stack direction={{ xs: 'column', md: 'row' }} spacing={{ xs: 1, md: 3 }}>
-								<Gauge width={200} height={200} value={80} />
+								<Gauge width={200} height={200} value={vo2Max} />
 							</Stack>
 						</div>
 					</div>
